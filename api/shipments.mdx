@@ -1,0 +1,237 @@
+---
+title: "Shipments API — track and advance deliveries"
+description: "Create shipments linked to approved orders, assign carriers, and advance delivery status through CREADO, ASIGNADO, EN_RUTA, and ENTREGADO."
+keywords: ["shipments", "envios", "carrier", "tracking", "status", "terrestre", "express"]
+---
+
+The shipments API manages the physical delivery leg of the SmartLogix logistics workflow. After an order is approved, you create a shipment that links to it, assigns a carrier (`transportista`), and tracks delivery progress. Status advances one step at a time through a defined progression. All endpoints require an `Authorization: Bearer <token>` header.
+
+---
+
+## GET /api/envios
+
+List all shipments.
+
+<CodeGroup>
+
+```bash Request
+curl --request GET \
+  --url http://localhost:8080/api/envios \
+  --header 'Authorization: Bearer $TOKEN'
+```
+
+```json Response 200
+[
+  {
+    "id": 1,
+    "pedidoId": 1,
+    "status": "ASIGNADO",
+    "tipoEnvio": "TERRESTRE",
+    "transportista": "TransCarga S.A.",
+    "guiaDespecho": "TC-20260420-001",
+    "rutaDescripcion": "Bogotá → Medellín vía autopista",
+    "destino": "Medellín, Colombia",
+    "fechaEstimadaEntrega": "2026-04-23T18:00:00",
+    "creadoEn": "2026-04-20T10:00:00"
+  }
+]
+```
+
+</CodeGroup>
+
+---
+
+## POST /api/envios
+
+Create a new shipment for an approved order. The shipment starts in `CREADO` status.
+
+### Request body
+
+<ParamField body="pedidoId" type="integer" required>
+  The ID of the order this shipment fulfils.
+</ParamField>
+
+<ParamField body="tipoEnvio" type="string" required>
+  Shipping method. Must be `TERRESTRE` or `EXPRESS`.
+</ParamField>
+
+<ParamField body="transportista" type="string" required>
+  Name of the carrier company responsible for the delivery.
+</ParamField>
+
+<ParamField body="destino" type="string" required>
+  Destination address or city for the shipment.
+</ParamField>
+
+### Response fields
+
+<ResponseField name="id" type="integer">
+  Auto-assigned shipment ID.
+</ResponseField>
+
+<ResponseField name="pedidoId" type="integer">
+  ID of the linked order.
+</ResponseField>
+
+<ResponseField name="tipoEnvio" type="string">
+  `TERRESTRE` or `EXPRESS`.
+</ResponseField>
+
+<ResponseField name="transportista" type="string">
+  Carrier name.
+</ResponseField>
+
+<ResponseField name="guiaDespecho" type="string">
+  Carrier tracking / dispatch guide number. Assigned by the service after creation.
+</ResponseField>
+
+<ResponseField name="rutaDescripcion" type="string">
+  Human-readable description of the route. Assigned by the service based on shipment type.
+</ResponseField>
+
+<ResponseField name="destino" type="string">
+  Destination address.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current delivery status. Initial value is `CREADO`. See [shipment status lifecycle](#shipment-status-lifecycle).
+</ResponseField>
+
+<ResponseField name="fechaEstimadaEntrega" type="string">
+  Estimated delivery date/time in ISO 8601 format.
+</ResponseField>
+
+<ResponseField name="creadoEn" type="string">
+  ISO 8601 timestamp of when the shipment was created.
+</ResponseField>
+
+<CodeGroup>
+
+```bash Request
+curl --request POST \
+  --url http://localhost:8080/api/envios \
+  --header 'Authorization: Bearer $TOKEN' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "pedidoId": 1,
+    "tipoEnvio": "TERRESTRE",
+    "transportista": "TransCarga S.A.",
+    "destino": "Medellín, Colombia"
+  }'
+```
+
+```json Response 201
+{
+  "id": 1,
+  "pedidoId": 1,
+  "status": "CREADO",
+  "tipoEnvio": "TERRESTRE",
+  "transportista": "TransCarga S.A.",
+  "guiaDespecho": "TC-20260420-001",
+  "rutaDescripcion": "Bogotá → Medellín vía autopista",
+  "destino": "Medellín, Colombia",
+  "fechaEstimadaEntrega": "2026-04-23T18:00:00",
+  "creadoEn": "2026-04-20T10:00:00"
+}
+```
+
+</CodeGroup>
+
+---
+
+## GET /api/envios/{id}
+
+Retrieve a single shipment by its numeric ID.
+
+### Path parameters
+
+<ParamField path="id" type="integer" required>
+  The shipment ID.
+</ParamField>
+
+<CodeGroup>
+
+```bash Request
+curl --request GET \
+  --url http://localhost:8080/api/envios/1 \
+  --header 'Authorization: Bearer $TOKEN'
+```
+
+```json Response 200
+{
+  "id": 1,
+  "pedidoId": 1,
+  "status": "ASIGNADO",
+  "tipoEnvio": "TERRESTRE",
+  "transportista": "TransCarga S.A.",
+  "guiaDespecho": "TC-20260420-001",
+  "rutaDescripcion": "Bogotá → Medellín vía autopista",
+  "destino": "Medellín, Colombia",
+  "fechaEstimadaEntrega": "2026-04-23T18:00:00",
+  "creadoEn": "2026-04-20T10:00:00"
+}
+```
+
+</CodeGroup>
+
+---
+
+## PATCH /api/envios/{id}/status
+
+Advance the status of an existing shipment. The new status is passed as a query parameter.
+
+### Path parameters
+
+<ParamField path="id" type="integer" required>
+  The shipment ID.
+</ParamField>
+
+### Query parameters
+
+<ParamField query="status" type="string" required>
+  The target status value. Must follow the valid progression: `CREADO` → `ASIGNADO` → `EN_RUTA` → `ENTREGADO`.
+</ParamField>
+
+<Warning>
+The service does not enforce step order — passing an out-of-sequence status will overwrite the current value without error. Always advance status one step at a time following `CREADO → ASIGNADO → EN_RUTA → ENTREGADO` to maintain a consistent audit trail.
+</Warning>
+
+<CodeGroup>
+
+```bash Request
+curl --request PATCH \
+  --url 'http://localhost:8080/api/envios/1/status?status=ASIGNADO' \
+  --header 'Authorization: Bearer $TOKEN'
+```
+
+```json Response 200
+{
+  "id": 1,
+  "pedidoId": 1,
+  "status": "ASIGNADO",
+  "tipoEnvio": "TERRESTRE",
+  "transportista": "TransCarga S.A.",
+  "guiaDespecho": "TC-20260420-001",
+  "rutaDescripcion": "Bogotá → Medellín vía autopista",
+  "destino": "Medellín, Colombia",
+  "fechaEstimadaEntrega": "2026-04-23T18:00:00",
+  "creadoEn": "2026-04-20T10:00:00"
+}
+```
+
+</CodeGroup>
+
+---
+
+## Shipment status lifecycle
+
+```
+CREADO → ASIGNADO → EN_RUTA → ENTREGADO
+```
+
+| Status | Description |
+|---|---|
+| `CREADO` | Shipment record created; carrier not yet confirmed. Initial state. |
+| `ASIGNADO` | Carrier has been assigned and the shipment is scheduled for pickup. |
+| `EN_RUTA` | Shipment is in transit to the destination. |
+| `ENTREGADO` | Shipment delivered to the customer. |

@@ -1,80 +1,124 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: "Get started with SmartLogix"
+description: "Stand up the full SmartLogix platform with Docker Compose, register a user account, and make your first authenticated API call in minutes."
 ---
 
-## Get started in three steps
+This guide walks you through cloning the repository, starting all services, creating an account, and querying the inventory API with a real JWT token. The entire platform runs locally via Docker Compose — no cloud account required.
 
-Get your documentation site running locally and make your first customization.
+## Prerequisites
 
-### Step 1: Set up your local environment
+Before you begin, make sure you have the following installed:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+- **Docker** and **Docker Compose** (Docker Desktop includes both)
+- **curl** or an API client such as Postman or Insomnia
 
-### Step 2: Deploy your changes
+## Setup
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+<Steps>
+  <Step title="Clone the repository">
+    Download the SmartLogix source code to your machine:
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    ```bash
+    git clone https://github.com/emiledubois/fullstack3.git
+    cd fullstack3
+    ```
+  </Step>
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+  <Step title="Start all services">
+    Build and start every service — including all six microservices, the frontend, and the PostgreSQL databases — with a single command:
 
-### Step 3: Go live
+    ```bash
+    docker-compose up --build
+    ```
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+    The first build takes a few minutes while Docker downloads base images and compiles the Java services.
+  </Step>
+
+  <Step title="Wait for services to be ready">
+    Watch the logs until all containers report that they are running. The two endpoints you'll use most are:
+
+    | Endpoint                     | Description                        |
+    | ---------------------------- | ---------------------------------- |
+    | `http://localhost:8080`      | API gateway — all API calls go here |
+    | `http://localhost:5173`      | React dashboard (browser UI)       |
+
+    <Note>
+      The React dashboard is available at [http://localhost:5173](http://localhost:5173). You can use it alongside the API or independently.
+    </Note>
+  </Step>
+
+  <Step title="Register a user account">
+    Create an account by sending your email and password to the auth endpoint:
+
+    ```bash
+    curl -s -X POST http://localhost:8080/api/auth/register \
+      -H "Content-Type: application/json" \
+      -d '{"email": "user@example.com", "password": "secret"}'
+    ```
+
+    A successful registration returns a confirmation message. You only need to do this once.
+  </Step>
+
+  <Step title="Log in and capture your JWT token">
+    Exchange your credentials for a JWT token, which you'll attach to every subsequent request:
+
+    ```bash
+    TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
+      -H "Content-Type: application/json" \
+      -d '{"email": "user@example.com", "password": "secret"}')
+
+    echo $TOKEN
+    ```
+
+    The response body is the raw JWT string. The command above stores it in the `TOKEN` shell variable for use in the next step.
+  </Step>
+
+  <Step title="Make your first authenticated request">
+    List all inventory items by including the token in the `Authorization` header:
+
+    ```bash
+    curl -s http://localhost:8080/api/inventario \
+      -H "Authorization: Bearer $TOKEN"
+    ```
+
+    A fresh installation returns an empty array `[]`. You can add items using `POST /api/inventario`.
+
+    **Example response:**
+
+    ```json
+    []
+    ```
+  </Step>
+</Steps>
+
+## Service health checks
+
+You can verify that each backend service is running by calling its health endpoint through the gateway:
+
+```bash
+# Inventory service
+curl http://localhost:8080/api/inventario/health
+
+# Orders service
+curl http://localhost:8080/api/pedidos/health
+
+# Shipments service
+curl http://localhost:8080/api/envios/health
+```
+
+A healthy service responds with HTTP `200`.
+
+<Warning>
+  Health endpoints do not require authentication, but all other API endpoints do. Requests without a valid `Authorization: Bearer <token>` header return HTTP `401`.
+</Warning>
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="API reference" icon="code" href="/api/overview">
+    Browse every available endpoint with full request and response schemas.
+  </Card>
+  <Card title="Inventory management" icon="boxes-stacked" href="/features/inventory">
+    Learn how to add products, assign warehouses, and manage stock levels.
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

@@ -1,0 +1,159 @@
+---
+title: 'Deploying SmartLogix with Docker Compose'
+description: 'Run the full SmartLogix stack locally with Docker Compose. Covers environment variables, named volumes, port bindings, and service health checks.'
+keywords: ['docker', 'docker-compose', 'deployment', 'environment variables', 'volumes', 'health check']
+---
+
+SmartLogix ships as a self-contained Docker Compose stack. A single `docker-compose up` command builds and starts all seven services — the API gateway, four backend microservices, a notification service, and the React frontend — together with four isolated PostgreSQL databases on a shared bridge network (`smartlogix-net`).
+
+## Prerequisites
+
+Before running the stack, make sure you have:
+
+- **Docker 20+** with BuildKit enabled
+- **Docker Compose v2** (`docker compose` or `docker-compose` v2)
+- **4 GB RAM** available for the containers
+
+## Starting the stack
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/emiledubois/fullstack3.git
+    cd fullstack3
+    ```
+  </Step>
+  <Step title="Build images and start all services">
+    The `--build` flag rebuilds all images from source. Use `-d` to run in the background.
+
+    ```bash
+    docker-compose up --build -d
+    ```
+
+    On the first run, Docker builds seven images (Java 17 + Spring Boot for each microservice, and a two-stage Node/nginx build for the frontend). This can take several minutes.
+  </Step>
+  <Step title="Verify all containers are running">
+    ```bash
+    docker-compose ps
+    ```
+
+    All services should show a `running` state. The postgres containers start first; the microservices depend on them via `depends_on`.
+  </Step>
+  <Step title="Tail logs for a specific service">
+    ```bash
+    docker-compose logs -f api-gateway
+    ```
+
+    Replace `api-gateway` with any service name to follow its output.
+  </Step>
+</Steps>
+
+## Service ports
+
+Each service binds to a fixed port on the Docker host.
+
+| Service | Host port | Container port |
+|---|---|---|
+| api-gateway | 8080 | 8080 |
+| auth-service | 8081 | 8081 |
+| ms-inventario | 8082 | 8082 |
+| ms-pedidos | 8083 | 8083 |
+| ms-envios | 8084 | 8084 |
+| notification-service | 8085 | 8085 |
+| frontend | 5173 | 80 |
+
+The frontend container runs nginx on port 80 internally and is mapped to port 5173 on the host to match the Vite dev-server convention. The React SPA is reachable at `http://localhost:5173`.
+
+## Environment variables
+
+The following variables are read from the `environment` block in `docker-compose.yml`. Override them before starting the stack for production deployments.
+
+<Warning>
+The default `JWT_SECRET` value in `docker-compose.yml` is a placeholder. Change it to a strong, randomly generated secret before running in any environment accessible outside your local machine.
+</Warning>
+
+### Shared
+
+| Variable | Services | Description |
+|---|---|---|
+| `JWT_SECRET` | api-gateway, auth-service | HMAC secret used to sign and verify JWT tokens. Must be identical in both services. |
+
+### Per-microservice database credentials
+
+Each microservice reads its own set of database variables. The pattern is the same for auth-service, ms-inventario, ms-pedidos, and ms-envios.
+
+| Variable | Default (docker-compose) | Description |
+|---|---|---|
+| `DB_HOST` | `postgres-<service>` | Hostname of the PostgreSQL container on `smartlogix-net` |
+| `DB_NAME` | `auth_db` / `inventario_db` / `pedidos_db` / `envios_db` | Database name |
+| `DB_USER` | `postgres` | PostgreSQL username |
+| `DB_PASS` | `secret` | PostgreSQL password |
+
+<Note>
+`notification-service` has no database and no configurable environment variables in the current Compose file.
+</Note>
+
+## Volumes
+
+Four named volumes provide persistence for the PostgreSQL data directories. They are created automatically on first run.
+
+| Volume | Used by |
+|---|---|
+| `auth-data` | postgres-auth |
+| `inventario-data` | postgres-inventario |
+| `pedidos-data` | postgres-pedidos |
+| `envios-data` | postgres-envios |
+
+## Stopping the stack
+
+<CodeGroup>
+
+```bash Stop containers (keep volumes)
+docker-compose down
+```
+
+```bash Stop containers and delete volumes
+docker-compose down -v
+```
+
+</CodeGroup>
+
+Use `docker-compose down -v` when you want a clean slate — for example, to re-run database migrations from scratch. This permanently deletes all data stored in the named volumes.
+
+## Health checks
+
+All Spring Boot services expose a Spring Actuator health endpoint. Use the commands below to verify each service is up after starting the stack.
+
+<CodeGroup>
+
+```bash API gateway
+curl -s http://localhost:8080/actuator/health
+```
+
+```bash Auth service
+curl -s http://localhost:8081/actuator/health
+```
+
+```bash ms-inventario
+curl -s http://localhost:8082/actuator/health
+```
+
+```bash ms-pedidos
+curl -s http://localhost:8083/actuator/health
+```
+
+```bash ms-envios
+curl -s http://localhost:8084/actuator/health
+```
+
+```bash Notification service
+curl -s http://localhost:8085/actuator/health
+```
+
+</CodeGroup>
+
+A healthy service returns:
+
+```json
+{"status":"UP"}
+```

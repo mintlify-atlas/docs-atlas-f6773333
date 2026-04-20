@@ -1,0 +1,280 @@
+---
+title: "Inventory API — products and stock"
+description: "Manage SmartLogix products, warehouse locations, pricing, stock levels, and low-stock alerts. All endpoints require a valid JWT."
+keywords: ["inventory", "products", "stock", "warehouse", "alerts", "sku"]
+---
+
+The inventory API lets you create and manage products stored in SmartLogix warehouses. Each product has a unique SKU, a warehouse location (`bodega`), a unit price, a current stock level, and a minimum threshold that triggers a low-stock alert. All endpoints require an `Authorization: Bearer <token>` header.
+
+---
+
+## GET /api/inventario
+
+List all products in the inventory.
+
+<CodeGroup>
+
+```bash Request
+curl --request GET \
+  --url http://localhost:8080/api/inventario \
+  --header 'Authorization: Bearer $TOKEN'
+```
+
+```json Response 200
+[
+  {
+    "id": 1,
+    "sku": "SL-BOX-001",
+    "nombre": "Caja de cartón 50x40",
+    "bodega": "BODEGA-A",
+    "precioUnitario": 2.50,
+    "stockActual": 340,
+    "umbralMinimo": 50,
+    "descripcion": "Caja estándar para envíos nacionales"
+  }
+]
+```
+
+</CodeGroup>
+
+---
+
+## POST /api/inventario
+
+Create a new product. Returns the created product with its assigned `id`.
+
+### Request body
+
+<ParamField body="sku" type="string" required>
+  Unique product identifier within SmartLogix. Must not already exist.
+</ParamField>
+
+<ParamField body="nombre" type="string" required>
+  Human-readable product name.
+</ParamField>
+
+<ParamField body="bodega" type="string">
+  Warehouse location identifier (e.g., `"BODEGA-A"`). Optional.
+</ParamField>
+
+<ParamField body="precioUnitario" type="number" required>
+  Unit price. Must be `0.0` or greater.
+</ParamField>
+
+<ParamField body="stockActual" type="integer" required>
+  Current quantity in stock. Must be `0` or greater.
+</ParamField>
+
+<ParamField body="umbralMinimo" type="integer" required>
+  Minimum stock threshold. When `stockActual` falls below this value, the product appears in the `/alertas` endpoint.
+</ParamField>
+
+<ParamField body="descripcion" type="string">
+  Optional free-text description of the product.
+</ParamField>
+
+### Response fields
+
+<ResponseField name="id" type="integer">
+  Auto-assigned product ID.
+</ResponseField>
+
+<ResponseField name="sku" type="string">
+  Unique product identifier.
+</ResponseField>
+
+<ResponseField name="nombre" type="string">
+  Product name.
+</ResponseField>
+
+<ResponseField name="bodega" type="string">
+  Warehouse location.
+</ResponseField>
+
+<ResponseField name="precioUnitario" type="number">
+  Unit price.
+</ResponseField>
+
+<ResponseField name="stockActual" type="integer">
+  Current quantity in stock.
+</ResponseField>
+
+<ResponseField name="umbralMinimo" type="integer">
+  Minimum stock threshold for low-stock alerts.
+</ResponseField>
+
+<ResponseField name="descripcion" type="string">
+  Optional product description.
+</ResponseField>
+
+<CodeGroup>
+
+```bash Request
+curl --request POST \
+  --url http://localhost:8080/api/inventario \
+  --header 'Authorization: Bearer $TOKEN' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "sku": "SL-BOX-001",
+    "nombre": "Caja de cartón 50x40",
+    "bodega": "BODEGA-A",
+    "precioUnitario": 2.50,
+    "stockActual": 340,
+    "umbralMinimo": 50
+  }'
+```
+
+```json Response 201
+{
+  "id": 1,
+  "sku": "SL-BOX-001",
+  "nombre": "Caja de cartón 50x40",
+  "bodega": "BODEGA-A",
+  "precioUnitario": 2.50,
+  "stockActual": 340,
+  "umbralMinimo": 50,
+  "descripcion": null
+}
+```
+
+</CodeGroup>
+
+---
+
+## GET /api/inventario/{id}
+
+Retrieve a single product by its numeric ID.
+
+### Path parameters
+
+<ParamField path="id" type="integer" required>
+  The product ID.
+</ParamField>
+
+<CodeGroup>
+
+```bash Request
+curl --request GET \
+  --url http://localhost:8080/api/inventario/1 \
+  --header 'Authorization: Bearer $TOKEN'
+```
+
+```json Response 200
+{
+  "id": 1,
+  "sku": "SL-BOX-001",
+  "nombre": "Caja de cartón 50x40",
+  "bodega": "BODEGA-A",
+  "precioUnitario": 2.50,
+  "stockActual": 340,
+  "umbralMinimo": 50,
+  "descripcion": null
+}
+```
+
+</CodeGroup>
+
+---
+
+## PUT /api/inventario/{id}
+
+Replace all fields of an existing product. The request body follows the same structure as `POST /api/inventario`.
+
+### Path parameters
+
+<ParamField path="id" type="integer" required>
+  The ID of the product to update.
+</ParamField>
+
+### Request body
+
+Same fields as [POST /api/inventario](#post-apiinventario).
+
+<CodeGroup>
+
+```bash Request
+curl --request PUT \
+  --url http://localhost:8080/api/inventario/1 \
+  --header 'Authorization: Bearer $TOKEN' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "sku": "SL-BOX-001",
+    "nombre": "Caja de cartón 50x40 (reforzada)",
+    "bodega": "BODEGA-B",
+    "precioUnitario": 3.00,
+    "stockActual": 280,
+    "umbralMinimo": 60
+  }'
+```
+
+```json Response 200
+{
+  "id": 1,
+  "sku": "SL-BOX-001",
+  "nombre": "Caja de cartón 50x40 (reforzada)",
+  "bodega": "BODEGA-B",
+  "precioUnitario": 3.00,
+  "stockActual": 280,
+  "umbralMinimo": 60,
+  "descripcion": null
+}
+```
+
+</CodeGroup>
+
+---
+
+## DELETE /api/inventario/{id}
+
+Delete a product from inventory. Returns no content on success.
+
+### Path parameters
+
+<ParamField path="id" type="integer" required>
+  The ID of the product to delete.
+</ParamField>
+
+<CodeGroup>
+
+```bash Request
+curl --request DELETE \
+  --url http://localhost:8080/api/inventario/1 \
+  --header 'Authorization: Bearer $TOKEN'
+```
+
+```json Response 204
+(no content)
+```
+
+</CodeGroup>
+
+---
+
+## GET /api/inventario/alertas
+
+Return all products whose `stockActual` is below their `umbralMinimo`. Use this endpoint to identify items that need restocking.
+
+<CodeGroup>
+
+```bash Request
+curl --request GET \
+  --url http://localhost:8080/api/inventario/alertas \
+  --header 'Authorization: Bearer $TOKEN'
+```
+
+```json Response 200
+[
+  {
+    "id": 3,
+    "sku": "SL-TAPE-005",
+    "nombre": "Cinta adhesiva industrial",
+    "bodega": "BODEGA-A",
+    "precioUnitario": 1.20,
+    "stockActual": 12,
+    "umbralMinimo": 30,
+    "descripcion": null
+  }
+]
+```
+
+</CodeGroup>

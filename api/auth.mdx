@@ -1,0 +1,93 @@
+---
+title: "Authentication API — register and login"
+description: "Create a SmartLogix user account or authenticate with existing credentials to receive a JWT token for all protected API resources."
+keywords: ["authentication", "jwt", "login", "register", "token"]
+---
+
+The authentication endpoints let you create a new user account and log in to receive a JWT token. Both endpoints are public — no `Authorization` header is required. Once you have a token, include it as `Authorization: Bearer <token>` in all requests to inventory, orders, and shipments endpoints.
+
+---
+
+## POST /api/auth/register
+
+Create a new user account. Returns a plain confirmation string on success.
+
+### Request body
+
+<ParamField body="email" type="string" required>
+  The user's email address. Must be unique across all accounts.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  The account password. Stored as a bcrypt hash.
+</ParamField>
+
+### Response
+
+Returns `200 OK` with a plain string body on success.
+
+<CodeGroup>
+
+```bash Request
+curl --request POST \
+  --url http://localhost:8080/api/auth/register \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "email": "warehouse@smartlogix.com",
+    "password": "secret123"
+  }'
+```
+
+```json Response 200
+"Usuario registrado exitosamente"
+```
+
+</CodeGroup>
+
+---
+
+## POST /api/auth/login
+
+Authenticate with an existing account and receive a JWT token. Use this token in the `Authorization` header for all protected endpoints.
+
+### Request body
+
+<ParamField body="email" type="string" required>
+  The registered email address.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  The account password.
+</ParamField>
+
+### Response
+
+Returns `200 OK` with the raw JWT string as the response body. The token encodes the user's email and role.
+
+### Errors
+
+| Status | Description |
+|---|---|
+| `401 Unauthorized` | The email does not exist or the password is incorrect. |
+
+<CodeGroup>
+
+```bash Request
+curl --request POST \
+  --url http://localhost:8080/api/auth/login \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "email": "warehouse@smartlogix.com",
+    "password": "secret123"
+  }' | jq -r '.'
+```
+
+```json Response 200
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ3YXJlaG91c2VAc21hcnRsb2dpeC5jb20iLCJyb2xlIjoiUk9MRV9VU0VSIiwiaWF0IjoxNzE0MDAwMDAwLCJleHAiOjE3MTQwODY0MDB9.abc123"
+```
+
+</CodeGroup>
+
+<Tip>
+Save the token to a shell variable for convenience: `TOKEN=$(curl -s -X POST ... | jq -r '.')`, then pass it as `--header "Authorization: Bearer $TOKEN"` in subsequent requests.
+</Tip>

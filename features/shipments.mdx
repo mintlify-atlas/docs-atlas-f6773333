@@ -1,0 +1,89 @@
+---
+title: 'Track and advance shipments through the delivery pipeline'
+description: 'Create TERRESTRE or EXPRESS shipments linked to approved orders, assign carriers, and advance each through a four-stage pipeline from creation to delivery.'
+keywords: ['shipments', 'envios', 'tracking', 'terrestre', 'express', 'carrier', 'kanban', 'delivery pipeline']
+---
+
+The Shipments module coordinates the physical movement of goods after an order has been approved. You create a shipment record linked to an order, choose a shipment type, and assign a carrier. The shipment then moves through a four-stage pipeline — `CREADO`, `ASIGNADO`, `EN_RUTA`, and `ENTREGADO` — which you advance manually as the real-world delivery progresses. The SmartLogix frontend displays all shipments in a Kanban board with one column per stage.
+
+## Shipment types
+
+SmartLogix supports two shipment types, which determine the delivery timeline and route description applied to the record.
+
+<CardGroup cols={2}>
+  <Card title="TERRESTRE" icon="truck">
+    Standard ground shipment. Estimated delivery is 5 days from creation. Route is described as a standard ground route to the destination.
+  </Card>
+  <Card title="EXPRESS" icon="bolt">
+    Priority express shipment. Estimated delivery is 1 day from creation. Route is marked as a priority express route to the destination.
+  </Card>
+</CardGroup>
+
+## Shipment pipeline
+
+Each shipment passes through four stages in order. You advance a shipment to the next stage by calling the status update endpoint or clicking the advance button in the Kanban board.
+
+| Stage | Meaning |
+|---|---|
+| `CREADO` | Shipment record created and linked to an order. Not yet assigned to a carrier. |
+| `ASIGNADO` | A carrier has been assigned and the shipment is confirmed for pickup. |
+| `EN_RUTA` | The shipment is in transit. The carrier is actively transporting the goods. |
+| `ENTREGADO` | The shipment has been delivered to the destination. This is the final stage. |
+
+## Creating a shipment
+
+<Steps>
+  <Step title="Identify the order to ship">
+    You need the `id` of an approved order (`status: APROBADO`) from the Orders module. Copy the order ID from the orders table or from the response of `POST /api/pedidos`.
+  </Step>
+  <Step title="Submit the shipment">
+    Send a `POST` request to `/api/envios` with the order ID, shipment type, carrier, and destination.
+
+    ```bash
+    curl -X POST http://localhost:8080/api/envios \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer <your-token>" \
+      -d '{
+        "pedidoId": 42,
+        "tipoEnvio": "TERRESTRE",
+        "transportista": "TransCargo S.A.",
+        "destino": "Valparaíso"
+      }'
+    ```
+
+    A successful response returns `201 Created` with the full shipment object, including its assigned `id` and initial status `CREADO`.
+  </Step>
+  <Step title="Advance the status as delivery progresses">
+    Use `PATCH /api/envios/{id}/status` to move the shipment to the next stage. Pass the target status as a query parameter.
+
+    ```bash
+    curl -X PATCH "http://localhost:8080/api/envios/7/status?status=ASIGNADO" \
+      -H "Authorization: Bearer <your-token>"
+    ```
+
+    Repeat this call for each stage transition: `ASIGNADO` → `EN_RUTA` → `ENTREGADO`.
+  </Step>
+</Steps>
+
+## Shipment fields
+
+| Field | Type | Description |
+|---|---|---|
+| `pedidoId` | integer | The ID of the order this shipment fulfills. Required. |
+| `tipoEnvio` | string | Shipment type: `TERRESTRE` or `EXPRESS`. Defaults to `TERRESTRE` if omitted. |
+| `transportista` | string | Name of the carrier or transport company. |
+| `destino` | string | Delivery destination address or city. |
+
+## Kanban board
+
+The SmartLogix Shipments page renders a four-column Kanban board, one column for each pipeline stage. Each shipment appears as a card showing:
+
+- Shipment ID and the linked order ID
+- Shipment type (`TERRESTRE` or `EXPRESS`)
+- Carrier name and destination
+
+Cards that are not yet in the final `ENTREGADO` stage display a **→ next status** button. Clicking it calls the status update endpoint automatically and moves the card to the next column without a page reload.
+
+<Tip>
+  Create shipments in sequence — one shipment per order. If you need to re-ship a returned order, create a new shipment record linked to the same `pedidoId`. Previous shipment records remain in the system for audit purposes.
+</Tip>

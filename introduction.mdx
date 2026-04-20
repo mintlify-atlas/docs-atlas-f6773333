@@ -1,0 +1,56 @@
+---
+title: "SmartLogix: Logistics Platform Overview"
+description: "An overview of SmartLogix, a microservices logistics platform for managing warehouse inventory, customer orders, shipments, and JWT-secured API access."
+---
+
+SmartLogix is a full-stack logistics management platform built on a Spring Boot microservices backend and a React dashboard. It gives you end-to-end visibility over your supply chain — from tracking inventory across warehouses to processing customer orders and following shipments through to delivery — all behind a single API gateway secured with JWT authentication.
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Inventory management" icon="boxes-stacked" href="/features/inventory">
+    Track products by SKU and warehouse location, monitor stock levels, and receive automated low-stock alerts before you run out.
+  </Card>
+  <Card title="Order processing" icon="cart-shopping" href="/features/orders">
+    Create and manage national and international orders with real-time stock validation at the point of submission.
+  </Card>
+  <Card title="Shipment tracking" icon="truck" href="/features/shipments">
+    Assign carriers and follow deliveries through a four-stage pipeline from creation through to confirmed delivery.
+  </Card>
+  <Card title="JWT authentication" icon="lock" href="/features/authentication">
+    Register accounts and authenticate every API request using signed JWT tokens issued by the auth service.
+  </Card>
+</CardGroup>
+
+## Microservices architecture
+
+SmartLogix runs as a set of independent services, each with its own database, coordinated through a central API gateway. All client traffic enters through the gateway on port `8080`; you never need to call individual services directly.
+
+| Service                | Port   | Responsibility                               |
+| ---------------------- | ------ | -------------------------------------------- |
+| `api-gateway`          | `8080` | Routes requests and validates JWT tokens     |
+| `auth-service`         | `8081` | User registration and login                  |
+| `ms-inventario`        | `8082` | Inventory records, SKUs, and stock alerts     |
+| `ms-pedidos`           | `8083` | Order creation and status management         |
+| `ms-envios`            | `8084` | Shipment assignment and delivery tracking    |
+| `notification-service` | `8085` | Async event-driven order approval alerts     |
+
+## Technology stack
+
+| Layer          | Technology                          |
+| -------------- | ----------------------------------- |
+| Backend        | Java 21, Spring Boot 3, Maven       |
+| Frontend       | React 18, JavaScript (ES6+)         |
+| Database       | PostgreSQL 15 (one instance per service) |
+| Infrastructure | Docker, Docker Compose              |
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Start all services with Docker Compose and make your first authenticated API call.
+  </Card>
+  <Card title="API reference" icon="code" href="/api/overview">
+    Browse every endpoint with request schemas, response examples, and authentication details.
+  </Card>
+</CardGroup>

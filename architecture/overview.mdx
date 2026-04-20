@@ -1,0 +1,66 @@
+---
+title: 'SmartLogix microservices architecture'
+description: 'Overview of SmartLogix service map, API gateway routing, circuit breaker strategy, database isolation, event-driven notifications, and design patterns.'
+keywords: ['architecture', 'microservices', 'api gateway', 'circuit breaker', 'event-driven', 'resilience4j']
+---
+
+SmartLogix is a full-stack logistics platform built on a microservices architecture. All external traffic enters through a single API gateway that handles routing and JWT authentication, while each backend service owns its own database and communicates with others through well-defined HTTP clients and internal Spring application events.
+
+## Service map
+
+| Service | Port | Responsibility | Auth required |
+|---|---|---|---|
+| api-gateway | 8080 | Routes and authenticates all API traffic | N/A |
+| auth-service | 8081 | User registration and JWT login | No |
+| ms-inventario | 8082 | Product and stock management | Yes |
+| ms-pedidos | 8083 | Order creation and lifecycle | Yes |
+| ms-envios | 8084 | Shipment tracking | Yes |
+| notification-service | 8085 | Async approval notifications (internal) | N/A |
+| frontend | 5173 | React SPA served via nginx | N/A |
+
+## API gateway routing
+
+The api-gateway is the single entry point for all client requests. It uses Spring Cloud Gateway (MVC) to forward traffic to the appropriate downstream service and strips the `/api` prefix before forwarding.
+
+| Incoming path | Downstream service | Auth enforced |
+|---|---|---|
+| `/api/auth/**` | `http://auth-service:8081` | No |
+| `/api/inventario/**` | `http://ms-inventario:8082` | Yes |
+| `/api/pedidos/**` | `http://ms-pedidos:8083` | Yes |
+| `/api/envios/**` | `http://ms-envios:8084` | Yes |
+
+`AuthFilter` is a `HandlerFilterFunction` applied to every protected route. It reads the `Authorization` header, validates the Bearer token with `JwtUtil`, and — when valid — injects the caller's email as an `X-User-Email` header before passing the request downstream. Requests without a valid token receive a `401 Unauthorized` response immediately at the gateway, before reaching any microservice.
+
+## Circuit breaker
+
+`InventarioClient` in ms-pedidos calls ms-inventario to check available stock before approving an order. The call is wrapped with the Resilience4j `@CircuitBreaker` annotation (circuit name: `inventario`).
+
+<Note>
+When ms-inventario is unavailable or too slow, Resilience4j opens the circuit and routes the call to `stockFallback`, which returns `false`. ms-pedidos treats a `false` stock check as a rejection, so the order is declined gracefully rather than being placed against unconfirmed stock.
+</Note>
+
+## Database-per-service
+
+Each service has its own dedicated PostgreSQL instance. There are no shared databases and no cross-service foreign keys.
+
+| Service | Database |
+|---|---|
+| auth-service | `auth_db` |
+| ms-inventario | `inventario_db` |
+| ms-pedidos | `pedidos_db` |
+| ms-envios | `envios_db` |
+
+Cross-service references use logical IDs rather than database foreign keys. For example, a shipment record in ms-envios stores a `pedidoId`, but that field is not a relational constraint into the pedidos database — it is a plain identifier that the calling service is responsible for keeping consistent.
+
+## Event-driven notifications
+
+When an order is approved, ms-pedidos publishes a `PedidoAprobadoEvent` (a Spring `ApplicationEvent`) carrying the order ID, user email, total, and order type. `NotificationListener` is annotated with `@EventListener` and `@Async`, so it handles the event on a separate thread without blocking the order-creation response.
+
+The listener logs the approval and is designed to call the notification-service REST endpoint (or a mail sender) in production. Because the listener runs asynchronously, a failure in the notification path does not roll back the order.
+
+## Design patterns
+
+- **Factory Method** — `PedidoFactory` creates either a domestic (`NACIONAL`) or international (`INTERNACIONAL`) `Pedido` object based on the request type, encapsulating the construction logic and adding customs documentation notes for international orders. A corresponding `EnvioFactory` applies the same pattern in ms-envios.
+- **Circuit Breaker** — Resilience4j in ms-pedidos protects the stock-check call to ms-inventario, with a conservative fallback that rejects the order rather than risking overselling.
+- **API Gateway** — A single gateway service handles all inbound routing and authentication, keeping cross-cutting concerns out of individual microservices.
+- **Observer / Event** — `PedidoAprobadoEvent` and `NotificationListener` decouple order approval from notification delivery using Spring's built-in event bus.

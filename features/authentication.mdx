@@ -1,0 +1,83 @@
+---
+title: 'Authenticate with SmartLogix using JWT tokens'
+description: 'SmartLogix uses JWT tokens for auth. Register, log in to receive a token, then attach it to every API request to access protected resources.'
+keywords: ['authentication', 'jwt', 'login', 'register', 'token', 'bearer']
+---
+
+SmartLogix uses JSON Web Tokens (JWT) to authenticate API requests. You first register an account or log in with existing credentials — the server responds with a JWT string. You then include that token in the `Authorization` header of every subsequent request. Without a valid token, all protected endpoints return `401 Unauthorized`.
+
+## How it works
+
+<Steps>
+  <Step title="Register an account">
+    Send your email and password to create a new SmartLogix account.
+
+    ```bash
+    curl -X POST http://localhost:8080/api/auth/register \
+      -H "Content-Type: application/json" \
+      -d '{"email": "user@example.com", "password": "s3cretPass"}'
+    ```
+
+    A successful registration returns a confirmation message. You can then log in immediately.
+  </Step>
+
+  <Step title="Log in and receive your token">
+    Send the same credentials to the login endpoint. The response body is the JWT string you'll use for all authenticated requests.
+
+    ```bash
+    curl -X POST http://localhost:8080/api/auth/login \
+      -H "Content-Type: application/json" \
+      -d '{"email": "user@example.com", "password": "s3cretPass"}'
+    ```
+
+    Example response:
+
+    ```text
+    eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyQGV4YW1wbGUuY29tIn0.abc123...
+    ```
+
+    Store this token — you'll attach it to every subsequent request.
+  </Step>
+
+  <Step title="Attach the token to requests">
+    Include the token in the `Authorization` header using the `Bearer` scheme.
+
+    ```bash
+    curl http://localhost:8080/api/inventario \
+      -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    ```
+
+    The SmartLogix frontend stores the token in `localStorage` and attaches it automatically to every request via an Axios interceptor.
+  </Step>
+</Steps>
+
+## API endpoints
+
+<CardGroup cols={2}>
+  <Card title="Register" icon="user-plus">
+    `POST /api/auth/register`
+
+    **Body:** `{ "email": "string", "password": "string" }`
+
+    Returns a success message on account creation.
+  </Card>
+  <Card title="Login" icon="key">
+    `POST /api/auth/login`
+
+    **Body:** `{ "email": "string", "password": "string" }`
+
+    Returns the raw JWT string to use as a Bearer token.
+  </Card>
+</CardGroup>
+
+## Token errors
+
+If your token is missing, expired, or malformed, SmartLogix returns `401 Unauthorized`. When this happens:
+
+1. Log in again at `POST /api/auth/login` to obtain a fresh token.
+2. Replace the stored token with the new one.
+3. Retry your original request with the updated `Authorization` header.
+
+<Note>
+  The SmartLogix frontend handles `401` responses automatically — it clears the stored token and redirects you to the login page so you can re-authenticate without manual intervention.
+</Note>

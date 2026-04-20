@@ -1,0 +1,66 @@
+---
+title: "SmartLogix API Reference"
+description: "SmartLogix REST API reference. All requests go through the gateway on port 8080. Authenticate with JWT to access inventory, orders, and shipments."
+keywords: ["api", "rest", "gateway", "jwt", "smartlogix"]
+---
+
+The SmartLogix API is a REST API served through a single gateway at `http://localhost:8080/api`. All requests to protected resources must include a valid JWT in the `Authorization` header. The API covers four resource groups: authentication, inventory management, order processing, and shipment tracking.
+
+## Base URL
+
+```
+http://localhost:8080/api
+```
+
+All endpoints described in this reference are relative to this base URL.
+
+## Authentication
+
+SmartLogix uses JWT (JSON Web Token) bearer authentication. Include your token in every request to a protected endpoint:
+
+```
+Authorization: Bearer <your-token>
+```
+
+Obtain a token by calling `POST /api/auth/login` with your email and password. The response body is the raw JWT string. Store it and pass it as the `Authorization` header for all subsequent requests.
+
+A `401 Unauthorized` response means either the header is missing, the token is malformed, or the token has expired. Re-authenticate via `/api/auth/login` to get a new token.
+
+<Note>
+The `/api/auth/register` and `/api/auth/login` endpoints are public — they do not require an `Authorization` header.
+</Note>
+
+## Resources
+
+| Resource | Base path | Description |
+|---|---|---|
+| Authentication | `/api/auth` | Register and log in to get a JWT token |
+| Inventory | `/api/inventario` | Manage products, stock levels, and alerts |
+| Orders | `/api/pedidos` | Create and track customer orders |
+| Shipments | `/api/envios` | Assign carriers and track shipment status |
+
+## Error responses
+
+| Status | Meaning |
+|---|---|
+| `400 Bad Request` | The request body failed validation. Check the field constraints. |
+| `401 Unauthorized` | The `Authorization` header is missing or the token is invalid. |
+| `404 Not Found` | The requested resource does not exist. |
+| `500 Internal Server Error` | An unexpected server-side error occurred. |
+
+## Resource pages
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="lock" href="/api/auth">
+    Register a new user account or log in to receive a JWT token.
+  </Card>
+  <Card title="Inventory" icon="box" href="/api/inventory">
+    Create, read, update, and delete products. View low-stock alerts.
+  </Card>
+  <Card title="Orders" icon="file-text" href="/api/orders">
+    Place and retrieve customer orders with stock validation.
+  </Card>
+  <Card title="Shipments" icon="truck" href="/api/shipments">
+    Create shipments, assign carriers, and advance delivery status.
+  </Card>
+</CardGroup>

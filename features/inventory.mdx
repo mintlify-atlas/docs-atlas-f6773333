@@ -1,0 +1,86 @@
+---
+title: 'Manage inventory, stock levels, and low-stock alerts'
+description: 'Track products by SKU and warehouse, set minimum stock thresholds, and receive automatic low-stock alerts when inventory falls below your defined limits.'
+keywords: ['inventory', 'stock', 'sku', 'warehouse', 'bodega', 'low-stock', 'alerts', 'products']
+---
+
+The Inventory module is the central product catalog for your SmartLogix operation. Each product is tracked by a unique SKU and tied to a physical warehouse location. You configure a minimum stock threshold (`umbralMinimo`) for each product — when current stock drops below that threshold, SmartLogix raises a low-stock alert visible both in the dashboard and via a dedicated API endpoint. The order service also queries inventory before approving any order, so keeping stock data accurate is essential to smooth order processing.
+
+## Product fields
+
+When creating or updating a product, you work with the following fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `sku` | string | Unique product identifier within SmartLogix. Must be unique across the catalog. |
+| `nombre` | string | Human-readable product name. |
+| `bodega` | string | Physical warehouse location where the product is stored. Optional. |
+| `precioUnitario` | number | Unit price in your local currency. Must be `0.0` or greater. |
+| `stockActual` | integer | Current number of units on hand. Must be `0` or greater. |
+| `umbralMinimo` | integer | Minimum stock level before a low-stock alert is triggered. Must be `0` or greater. |
+
+## Key workflows
+
+<Tabs>
+  <Tab title="Add a product">
+    Send a `POST` request to create a new product in the catalog. All required fields must be present.
+
+    ```bash
+    curl -X POST http://localhost:8080/api/inventario \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer <your-token>" \
+      -d '{
+        "sku": "ELEC-001",
+        "nombre": "Laptop 15\"",
+        "bodega": "Bodega A",
+        "precioUnitario": 899.99,
+        "stockActual": 50,
+        "umbralMinimo": 10
+      }'
+    ```
+
+    A successful response returns `201 Created` with the full product object including its assigned `id`.
+  </Tab>
+  <Tab title="Update a product">
+    Send a `PUT` request with the product `id` to update any fields, including the current stock count.
+
+    ```bash
+    curl -X PUT http://localhost:8080/api/inventario/1 \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer <your-token>" \
+      -d '{
+        "sku": "ELEC-001",
+        "nombre": "Laptop 15\"",
+        "bodega": "Bodega A",
+        "precioUnitario": 899.99,
+        "stockActual": 42,
+        "umbralMinimo": 10
+      }'
+    ```
+
+    The endpoint replaces the full product record. Include all fields, not just the ones you're changing.
+  </Tab>
+  <Tab title="View low-stock alerts">
+    Retrieve all products whose `stockActual` is below their `umbralMinimo`.
+
+    ```bash
+    curl http://localhost:8080/api/inventario/alertas \
+      -H "Authorization: Bearer <your-token>"
+    ```
+
+    The response is a list of product objects in alert state. An empty array means all stock levels are within acceptable thresholds.
+  </Tab>
+</Tabs>
+
+<Warning>
+  When a product's `stockActual` falls below `umbralMinimo`, SmartLogix raises a low-stock alert for that product. The order service checks available stock before approving any new order — if stock is insufficient, the order is rejected. Keep `stockActual` up to date after receiving shipments or making manual adjustments to prevent order rejections.
+</Warning>
+
+## Dashboard view
+
+The SmartLogix dashboard displays a summary widget showing the total number of products and how many are currently in a low-stock state. The **Inventory** page lists every product in a table with the following status indicators:
+
+- **OK** (green) — `stockActual` is at or above `umbralMinimo`. No action required.
+- **Bajo** (red) — `stockActual` is below `umbralMinimo`. The entire row is highlighted in red to draw attention.
+
+You can search products by name, SKU, or warehouse location using the search bar above the table. The dashboard also shows a separate panel listing only the products currently in alert state, with their current stock and minimum threshold displayed side by side.

@@ -1,0 +1,80 @@
+{
+  "projectType": "saas",
+  "projectName": "SmartLogix",
+  "projectDescription": "A full-stack logistics management platform built with Spring Boot microservices and React, providing inventory tracking, order processing, and shipment management through a JWT-secured API gateway.",
+  "theme": "luma",
+  "primaryColor": "#2563EB",
+  "lightColor": "#EFF6FF",
+  "darkColor": "#1E3A8A",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": ["introduction", "quickstart"]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/authentication",
+              "features/inventory",
+              "features/orders",
+              "features/shipments"
+            ]
+          },
+          {
+            "group": "Architecture",
+            "pages": [
+              "architecture/overview",
+              "architecture/deployment"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "API Reference",
+            "pages": [
+              "api/overview",
+              "api/auth",
+              "api/inventory",
+              "api/orders",
+              "api/shipments"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Inventory management with SKU tracking, warehouse assignment, and low-stock alerts",
+    "Order processing for national and international orders with real-time stock validation",
+    "Shipment tracking with a four-stage delivery pipeline (CREADO → ASIGNADO → EN_RUTA → ENTREGADO)",
+    "Event-driven async notifications when orders are approved",
+    "JWT-based authentication with a centralized API gateway enforcing security across all services",
+    "Circuit breaker pattern (Resilience4j) for resilient cross-service communication",
+    "Database-per-service architecture for independent data isolation",
+    "React SPA dashboard with kanban-style shipment board and real-time stat cards"
+  ],
+  "publicApiSurface": [
+    "POST /api/auth/register",
+    "POST /api/auth/login",
+    "GET /api/inventario",
+    "POST /api/inventario",
+    "GET /api/inventario/{id}",
+    "PUT /api/inventario/{id}",
+    "DELETE /api/inventario/{id}",
+    "GET /api/inventario/alertas",
+    "GET /api/pedidos",
+    "POST /api/pedidos",
+    "GET /api/pedidos/{id}",
+    "GET /api/envios",
+    "POST /api/envios",
+    "GET /api/envios/{id}",
+    "PATCH /api/envios/{id}/status"
+  ]
+}

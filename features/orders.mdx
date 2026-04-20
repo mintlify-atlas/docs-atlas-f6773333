@@ -1,0 +1,93 @@
+---
+title: 'Create and manage orders with real-time stock validation'
+description: 'Place domestic and international orders in SmartLogix. Every order is validated against live inventory before approval, so you never oversell available stock.'
+keywords: ['orders', 'pedidos', 'stock validation', 'circuit breaker', 'nacional', 'internacional', 'order status']
+---
+
+The Orders module handles the full lifecycle of customer orders in SmartLogix. When you submit a new order, the service checks current stock levels in real time before confirming it. Orders are typed as either `NACIONAL` (domestic) or `INTERNACIONAL` (international), which determines how the record is created and what information is required. Every order moves through a defined set of statuses from creation through to delivery or cancellation.
+
+## Order types
+
+<CardGroup cols={2}>
+  <Card title="NACIONAL" icon="truck">
+    Standard domestic order. Used for deliveries within the country. No additional documentation is required at order creation time.
+  </Card>
+  <Card title="INTERNACIONAL" icon="globe">
+    Cross-border order. SmartLogix automatically adds a note indicating that customs documentation is required. Account for this in your fulfillment workflow.
+  </Card>
+</CardGroup>
+
+## Order lifecycle
+
+Orders follow a linear status progression. Once an order reaches `ENTREGADO` or `CANCELADO`, it does not change status again.
+
+| Status | Meaning |
+|---|---|
+| `PENDIENTE` | Order created, awaiting processing. This is the initial state. |
+| `APROBADO` | Stock was confirmed and the order was approved. |
+| `EN_ENVIO` | A shipment has been created and the order is in transit. |
+| `ENTREGADO` | The order has been delivered to the customer. |
+| `CANCELADO` | The order was cancelled and will not be fulfilled. |
+
+The dashboard displays each order's status with color-coded badges: yellow for `PENDIENTE`, green for `APROBADO`, blue for `EN_ENVIO`, gray for `ENTREGADO`, and red for `CANCELADO`.
+
+## Order fields
+
+| Field | Type | Description |
+|---|---|---|
+| `userId` | integer | ID of the SmartLogix user placing the order. |
+| `userEmail` | string | Email address of the user placing the order. |
+| `clienteNombre` | string | Name of the end customer receiving the order. |
+| `total` | number | Total order value. |
+| `tipoPedido` | string | Order type: `NACIONAL` or `INTERNACIONAL`. Defaults to `NACIONAL` if omitted. |
+| `destino` | string | Destination city or country for the order. |
+| `productoId` | integer | ID of the product being ordered. Used for stock validation. |
+| `cantidad` | integer | Quantity of the product requested. Defaults to `1` if omitted. |
+
+## Creating an order
+
+<Steps>
+  <Step title="Submit the order">
+    Send a `POST` request to `/api/pedidos` with the order details. Include `productoId` and `cantidad` so SmartLogix can validate stock before approving.
+
+    ```bash
+    curl -X POST http://localhost:8080/api/pedidos \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer <your-token>" \
+      -d '{
+        "userId": 1,
+        "userEmail": "user@example.com",
+        "clienteNombre": "Ana García",
+        "total": 1799.98,
+        "tipoPedido": "NACIONAL",
+        "destino": "Santiago",
+        "productoId": 1,
+        "cantidad": 2
+      }'
+    ```
+  </Step>
+  <Step title="Stock validation runs automatically">
+    Before saving the order, SmartLogix queries the inventory service to verify that the requested `cantidad` is available for `productoId`. If stock is sufficient, the order is saved with status `PENDIENTE` and the response returns `201 Created` with the full order object.
+
+    If stock is insufficient — or if the inventory service is temporarily unavailable — the request returns an error and the order is not created. See [Stock validation](#real-time-stock-validation) below for details.
+  </Step>
+</Steps>
+
+## Real-time stock validation
+
+Every order creation request triggers a stock check against the Inventory service. SmartLogix queries `GET /api/inventario/{productoId}/stock?cantidad={cantidad}` and waits for a response before proceeding.
+
+Two situations cause an order to be rejected:
+
+- **Insufficient stock** — `stockActual` for the product is less than the requested `cantidad`.
+- **Inventory service unavailable** — If the inventory service does not respond, a circuit breaker activates and automatically rejects the order rather than risking an oversell.
+
+In both cases the API returns an error message. No order record is created.
+
+<Note>
+  If you omit `productoId` from the request, SmartLogix skips the stock check and creates the order directly. This is useful for manual or adjustment orders, but use it carefully — no inventory is reserved or decremented automatically.
+</Note>
+
+## Filtering orders by status
+
+The SmartLogix Orders page lets you filter the order table by status using the pill buttons above the list: **Todos**, **PENDIENTE**, **APROBADO**, **EN_ENVIO**, **ENTREGADO**, and **CANCELADO**. Select any status to see only orders in that state. The count of total orders is shown in the header regardless of the active filter.

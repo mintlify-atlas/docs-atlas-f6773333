@@ -1,97 +1,58 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "SmartLogix: Full-Stack Logistics Management Platform"
+description: "SmartLogix gives you real-time visibility over inventory, orders, and shipments through a microservices API secured by JWT authentication."
 ---
 
-## Setting up
+SmartLogix is a full-stack logistics management platform built with Spring Boot microservices and a React dashboard. It covers the entire supply chain workflow — from registering inventory items to processing customer orders and tracking shipments through to delivery — all accessible through a single API gateway.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Set up SmartLogix and make your first API call in minutes.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="API Reference" icon="code" href="/api/overview">
+    Explore every endpoint with request/response schemas and examples.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Inventory Management" icon="boxes-stacked" href="/features/inventory">
+    Track products, warehouses, and low-stock alerts in real time.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Order Processing" icon="cart-shopping" href="/features/orders">
+    Create and manage national and international orders with stock validation.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## What SmartLogix does
 
-Everything you need to create world-class documentation.
+SmartLogix is organized around three core domains that mirror real logistics operations:
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
+<CardGroup cols={3}>
+  <Card title="Inventory" icon="warehouse" href="/features/inventory">
+    SKU tracking, warehouse assignment, and automated low-stock alerts.
   </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
+  <Card title="Orders" icon="file-invoice" href="/features/orders">
+    National and international order workflows with real-time stock checks.
   </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
+  <Card title="Shipments" icon="truck" href="/features/shipments">
+    Four-stage delivery pipeline with carrier assignment and status tracking.
   </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+</CardGroup>
 
-## Need inspiration?
+## Get started
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<Steps>
+  <Step title="Run the platform">
+    Start all services with a single Docker Compose command. See the [quickstart](/quickstart) for the full setup guide.
+  </Step>
+  <Step title="Create an account">
+    Register a user account via `POST /api/auth/register` to receive a JWT token for authenticated requests.
+  </Step>
+  <Step title="Add inventory">
+    Use `POST /api/inventario` to register your first products with SKUs, warehouse locations, and stock levels.
+  </Step>
+  <Step title="Create an order">
+    Submit `POST /api/pedidos` to place an order. SmartLogix validates stock in real time before confirming.
+  </Step>
+</Steps>
+
+<Note>
+  All API requests (except registration and login) require a `Authorization: Bearer <token>` header. See [Authentication](/features/authentication) for details.
+</Note>
